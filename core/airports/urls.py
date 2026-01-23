@@ -1,7 +1,10 @@
-from rest_framework.routers import DefaultRouter
-from .views import AirportViewSet
+from django.urls import path
+from airports.views import AirportViewSet
 
-router = DefaultRouter()
-router.register(r'airports', AirportViewSet, basename='airport')
+airport_list = AirportViewSet.as_view({'get': 'list'})
+airport_detail = AirportViewSet.as_view({'get': 'retrieve'})
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', airport_list, name='airport-list'),
+    path('<int:pk>/', airport_detail, name='airport-detail'),
+]

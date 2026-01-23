@@ -1,7 +1,10 @@
-from rest_framework.routers import DefaultRouter
-from .views import AirplaneViewSet
+from django.urls import path
+from airplanes.views import AirplaneViewSet
 
-router = DefaultRouter()
-router.register(r'airplanes', AirplaneViewSet, basename='airplane')
+airplane_list = AirplaneViewSet.as_view({'get': 'list'})
+airplane_detail = AirplaneViewSet.as_view({'get': 'retrieve'})
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('', airplane_list, name='airplane-list'),
+    path('<int:pk>/', airplane_detail, name='airplane-detail'),
+]

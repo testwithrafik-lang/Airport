@@ -16,36 +16,23 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework.routers import DefaultRouter
 
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
 )
 
-from users.views import UserViewSet
-from countries.views import CountryViewSet
-from airports.views import AirportViewSet
-from airlines.views import AirlineViewSet
-from airplanes.views import AirplaneViewSet
-from flights.views import FlightViewSet
-from tickets.views import TicketViewSet
-
-
-router = DefaultRouter()
-
-router.register(r'users', UserViewSet, basename='user')
-router.register(r'countries', CountryViewSet, basename='country')
-router.register(r'airports', AirportViewSet, basename='airport')
-router.register(r'airlines', AirlineViewSet, basename='airline')
-router.register(r'airplanes', AirplaneViewSet, basename='airplane')
-router.register(r'flights', FlightViewSet, basename='flight')
-router.register(r'tickets', TicketViewSet, basename='ticket')
-
-
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/swagger/',SpectacularSwaggerView.as_view(url_name='schema'),name='swagger-ui'),
-    path('api/', include(router.urls)),
+    path('api/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+
+    
+    path('api/countries/', include('countries.urls')),
+    path('api/airports/', include('airports.urls')),
+    path('api/flights/', include('flights.urls')),
+    path('api/users/', include('users.urls')),
+    path('api/tickets/', include('tickets.urls')),
 ]
