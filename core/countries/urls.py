@@ -1,11 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from countries.views import CountryViewSet
-
-router = DefaultRouter()
-router.register(r'', CountryViewSet, basename='country')
+from django.urls import path
+from countries.views import CountryAPIView
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', CountryAPIView.as_view(), name='country-list'),
+    path('<int:pk>/', CountryAPIView.as_view(), name='country-detail'),
 ]
-

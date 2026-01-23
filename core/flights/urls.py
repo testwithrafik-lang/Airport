@@ -1,10 +1,7 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from flights.views import FlightViewSet
-
-router = DefaultRouter()
-router.register(r'', FlightViewSet, basename='flight')
+from django.urls import path
+from flights.views import FlightAPIView
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('', FlightAPIView.as_view(), name='flight-list'),
+    path('<int:pk>/', FlightAPIView.as_view(), name='flight-detail'),
 ]
