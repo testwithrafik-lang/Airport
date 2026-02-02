@@ -3,14 +3,15 @@ from rest_framework import serializers
 from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+
     class Meta:
         model = User
-        fields = ['id', 'email', 'phone', 'role', 'is_active', 'is_staff']
+        fields = ['id', 'email', 'password', 'phone', 'role', 'is_active', 'is_staff']
         read_only_fields = ['id', 'is_staff']
 
     def validate_email(self, value):
-       
-        if not re.match(r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$',value):
+        if not re.match(r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$', value):
             raise serializers.ValidationError("Invalid email format.")
 
         if User.objects.filter(email=value).exists():
@@ -19,10 +20,12 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_phone(self, value):
-        if not value.isdigit():
-            raise serializers.ValidationError("Phone must contain only digits.")
-
-        if len(value) > 10:
-            raise serializers.ValidationError("Phone must not exceed 10 digits.")
-
+        if value:
+            if not value.isdigit():
+                raise serializers.ValidationError("Phone must contain only digits.")
+            if len(value) > 10:
+                raise serializers.ValidationError("Phone must not exceed 10 digits.")
         return value
+
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
