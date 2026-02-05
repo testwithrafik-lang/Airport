@@ -13,10 +13,6 @@ class UserSerializer(serializers.ModelSerializer):
     def validate_email(self, value):
         if not re.match(r'^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$', value):
             raise serializers.ValidationError("Invalid email format.")
-
-        if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("This email is already in use.")
-
         return value
 
     def validate_phone(self, value):
