@@ -1,18 +1,28 @@
-from rest_framework import status
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.decorators import action
+from rest_framework import viewsets, status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
-
 from .models import Ticket
-from .serializers import TicketSerializer
-from users.permissions import IsOwnerOrAdmin
+from .serializers import TicketCreateSerializer, TicketListSerializer, TicketDetailSerializer
 from .permissions import CanPayTicket
+from users.permissions import IsOwnerOrAdmin
 
-class TicketViewSet(ModelViewSet):
+class TicketViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
-    serializer_class = TicketSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated(), IsOwnerOrAdmin()]
+        elif self.action in ['create', 'pay', 'cancel']:
+            return [IsAuthenticated()]
+        return [IsAuthenticated()]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TicketCreateSerializer
+        elif self.action == 'retrieve':
+            return TicketDetailSerializer
+        return TicketListSerializer
 
     def get_queryset(self):
         user = self.request.user
@@ -20,16 +30,16 @@ class TicketViewSet(ModelViewSet):
             return Ticket.objects.all()
         return Ticket.objects.filter(passenger=user)
 
-    def perform_create(self, serializer):
-        serializer.save(
-            passenger=self.request.user,
-            status='booked',
-            paid=False
-        )
-
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, CanPayTicket])
     def pay(self, request, pk=None):
-        ticket = self.get_object()
+        try:
+            ticket = self.get_object()
+        except Ticket.DoesNotExist:
+            return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if ticket.paid:
+            return Response({"detail": "Ticket already paid."}, status=status.HTTP_400_BAD_REQUEST)
+
         ticket.paid = True
         ticket.status = 'paid'
         ticket.save()
@@ -37,9 +47,14 @@ class TicketViewSet(ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsOwnerOrAdmin])
     def cancel(self, request, pk=None):
-        ticket = self.get_object()
+        try:
+            ticket = self.get_object()
+        except Ticket.DoesNotExist:
+            return Response({"detail": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+
         if ticket.status == 'cancelled':
-            return Response({"detail": "Ticket already cancelled"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Ticket already cancelled."}, status=status.HTTP_400_BAD_REQUEST)
+
         ticket.status = 'cancelled'
         ticket.save()
-        return Response({"detail": "Ticket cancelled successfully"}, status=status.HTTP_200_OK)
+        return Response({"detail": "Ticket cancelled successfully."}, status=status.HTTP_200_OK)
