@@ -14,7 +14,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         verbose_name="Email address"
     )
-
+    phone = models.CharField(
+        max_length=15, 
+        unique=True, 
+        verbose_name="Phone number",
+        null=True,     
+        blank=True     
+    )
     role = models.CharField(
         max_length=10,
         choices=Roles.choices,

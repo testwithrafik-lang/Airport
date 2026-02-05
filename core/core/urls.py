@@ -11,16 +11,10 @@ from rest_framework_simplejwt.views import (
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # JWT Авторизація
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
-    # Swagger
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-
-    # Твої додатки
     path('api/countries/', include('countries.urls')),
     path('api/airports/', include('airports.urls')),
     path('api/flights/', include('flights.urls')),
