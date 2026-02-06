@@ -28,12 +28,5 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
-        
-        if instance != request.user and not (request.user.is_staff or getattr(request.user, "role", None) == "ADMIN"):
-            return Response(
-                {"detail": "You do not have permission to view this user."}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
