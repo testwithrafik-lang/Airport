@@ -15,9 +15,8 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/countries/', include('countries.urls')),
-    path('api/airports/', include('airports.urls')),
-    path('api/flights/', include('flights.urls')),
-    path('api/users/', include('users.urls')),
-    path('api/tickets/', include('tickets.urls')),
+    path('api/locations/', include('locations.urls')), 
+    path('api/fleet/', include('fleet.urls')),         
+    path('api/flights/', include('flights.urls')),     
+    path('api/users/', include('users.urls')),         
 ]

@@ -22,7 +22,7 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'create':
             return UserRegisterSerializer
-        elif self.request.user.is_staff or getattr(self.request.user, "role", None) == "ADMIN":
+        if self.request.user.is_staff or getattr(self.request.user, "role", None) == "ADMIN":
             return UserAdminSerializer
         return UserMeSerializer
 
@@ -30,7 +30,10 @@ class UserViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         
         if instance != request.user and not (request.user.is_staff or getattr(request.user, "role", None) == "ADMIN"):
-            return Response({"detail": "You do not have permission to view this user."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "You do not have permission to view this user."}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-
