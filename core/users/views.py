@@ -2,11 +2,10 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from .models import User
-from .serializers import UserRegisterSerializer, UserMeSerializer, UserAdminSerializer
+from .serializers import ( UserRegisterSerializer,UserMeSerializer, UserAdminSerializer)
 from .permissions import IsAdmin, IsOwnerOrAdmin
 
 class UserViewSet(viewsets.ModelViewSet):
-    serializer_class = UserMeSerializer  
 
     def get_permissions(self):
         if self.action == 'create':
@@ -26,7 +25,8 @@ class UserViewSet(viewsets.ModelViewSet):
             return UserAdminSerializer
         return UserMeSerializer
 
-    def retrieve(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.save()
+        return Response(data, status=status.HTTP_201_CREATED)

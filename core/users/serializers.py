@@ -1,9 +1,12 @@
 import re
 from rest_framework import serializers
+from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
 
+
 class UserRegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
@@ -14,15 +17,30 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid email format.")
         return value
 
+    def validate_password(self, value):
+        validate_password(value)
+        return value
+
     def validate_phone(self, value):
         if value and not value.isdigit():
             raise serializers.ValidationError("Phone must contain only digits.")
         return value
 
     def create(self, validated_data):
-        return User.objects.create_user(**validated_data)
+        user = User.objects.create_user(**validated_data)
 
+        refresh = RefreshToken.for_user(user)
 
+        return {
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "phone": user.phone,
+                "role": user.role,
+            },
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }
 class UserMeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
