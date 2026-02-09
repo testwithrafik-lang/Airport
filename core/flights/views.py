@@ -36,6 +36,19 @@ class TicketViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         return [IsAuthenticated(), IsOwnerOrAdmin()]
+    
+    @action(detail=True, methods=['get'])
+    def seats(self, request, pk=None):
+        flight = self.get_object()
+        airplane = flight.airplane
+
+        rows = (airplane.capacity // 6) + (1 if airplane.capacity % 6 else 0)
+        all_seats = [f"{row}{seat}" for row in range(1, rows + 1) for seat in "ABCDEF"]
+
+        taken_seats = Ticket.objects.filter(flight=flight).values_list('seat_number', flat=True)
+        available_seats = [s for s in all_seats if s not in taken_seats]
+
+        return Response({"available_seats": available_seats, "taken_seats": list(taken_seats)})
 
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
