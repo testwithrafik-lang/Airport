@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from .models import Flight, Ticket
 from datetime import date
@@ -7,6 +8,11 @@ class FlightSerializer(serializers.ModelSerializer):
         model = Flight
         fields = ['id', 'flight_number', 'airplane', 'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time', 'status']
         read_only_fields = ['status']
+
+    def validate_seat_number(self, value):
+        if not re.match(r'^[1-9]\d?[A-F]$', value):
+            raise serializers.ValidationError("Invalid seat format. Example: 12A")
+        return value
 
     def validate(self, attrs):
         departure_time = attrs.get('departure_time')

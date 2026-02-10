@@ -59,3 +59,5 @@ class Ticket(models.Model):
 
     def __str__(self):
         return f"Ticket {self.id} for {self.flight.flight_number}"
+    class Meta:
+        unique_together = ('flight', 'seat_number')
