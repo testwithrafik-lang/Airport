@@ -1,10 +1,15 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-from .models import Flight, Ticket
-from .serializers import (  FlightSerializer, TicketCreateSerializer,TicketListSerializer, TicketDetailSerializer)
-from users.permissions import IsAdmin, IsOwnerOrAdmin
+
+from .models import Flight, Ticket, Order
+from .serializers import (
+    FlightSerializer,
+    TicketListSerializer,
+    TicketDetailSerializer,
+    OrderSerializer,
+)
+from users.permissions import IsAdmin
+
 
 class FlightViewSet(viewsets.ModelViewSet):
     queryset = Flight.objects.all()
@@ -15,48 +20,35 @@ class FlightViewSet(viewsets.ModelViewSet):
             return [IsAdmin()]
         return [IsAuthenticatedOrReadOnly()]
 
-class TicketViewSet(viewsets.ModelViewSet):
-    queryset = Ticket.objects.all()
+
+class OrderViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.prefetch_related('tickets__flight')
+    serializer_class = OrderSerializer
+    http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
-        
-        if self.request.user.is_staff or getattr(self.request.user, 'role', None) == 'ADMIN':
-            return Ticket.objects.all()
-        return Ticket.objects.filter(passenger=self.request.user)
+        user = self.request.user
+        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+            return self.queryset
+        return self.queryset.filter(user=user)
+
+    def get_permissions(self):
+        return [IsAuthenticated()]
+
+
+class TicketViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Ticket.objects.select_related('order', 'flight')
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+            return self.queryset
+        return self.queryset.filter(order__user=user)
 
     def get_serializer_class(self):
-        if self.action == 'create':
-            return TicketCreateSerializer
         if self.action == 'list':
             return TicketListSerializer
         return TicketDetailSerializer
 
-    def perform_create(self, serializer):
-        serializer.save(passenger=self.request.user)
-
     def get_permissions(self):
-        return [IsAuthenticated(), IsOwnerOrAdmin()]
-    
-    @action(detail=True, methods=['get'])
-    def seats(self, request, pk=None):
-        flight = self.get_object()
-        airplane = flight.airplane
-
-        rows = (airplane.capacity // 6) + (1 if airplane.capacity % 6 else 0)
-        all_seats = [f"{row}{seat}" for row in range(1, rows + 1) for seat in "ABCDEF"]
-
-        taken_seats = Ticket.objects.filter(flight=flight).values_list('seat_number', flat=True)
-        available_seats = [s for s in all_seats if s not in taken_seats]
-
-        return Response({"available_seats": available_seats, "taken_seats": list(taken_seats)})
-
-    @action(detail=True, methods=['post'])
-    def pay(self, request, pk=None):
-        ticket = self.get_object()
-        if ticket.paid:
-            return Response({'detail': 'Ticket is already paid.'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        ticket.paid = True
-        ticket.status = 'confirmed'
-        ticket.save()
-        return Response({'detail': 'Ticket paid successfully.'}, status=status.HTTP_200_OK)
+        return [IsAuthenticated()]

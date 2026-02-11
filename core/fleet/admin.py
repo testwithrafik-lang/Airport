@@ -8,7 +8,7 @@ class AirlineAdmin(admin.ModelAdmin):
 
 @admin.register(Airplane)
 class AirplaneAdmin(admin.ModelAdmin):
-    # Тут я вказав саме ті поля, які є у твоєму коді: 'model' та 'registration_number'
+   
     list_display = ('id', 'model', 'registration_number', 'capacity', 'airline')
     list_filter = ('airline',)
     search_fields = ('model', 'registration_number')
