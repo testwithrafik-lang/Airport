@@ -1,6 +1,7 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
-
+from rest_framework.decorators import action 
+from rest_framework.permissions import Response
 from .models import Flight, Ticket, Order
 from .serializers import (
     FlightSerializer,
@@ -34,6 +35,21 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         return [IsAuthenticated()]
+    @action(detail=True, methods =['post'])
+    def pay(self,request,pk=None):
+        order = self.get_object()
+        if order.status != Order.Status.PENDING:         
+            return Response(
+                {"detail": "Order cannot be paid."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        order.status = Order.Status.PAID
+        order.save(update_fields=['status'])
+        order.tickets.update(paid=True)
+        return Response(
+            {"detail": "Order successfully paid."},
+            status=status.HTTP_200_OK
+        )
 
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
@@ -52,3 +68,5 @@ class TicketViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_permissions(self):
         return [IsAuthenticated()]
+    
+        
