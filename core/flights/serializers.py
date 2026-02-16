@@ -1,9 +1,10 @@
 import re
 from decimal import Decimal
-from datetime import date
+from datetime import date, timedelta
 from rest_framework import serializers
 from .models import Flight, Ticket, Order
-
+from django.db import transaction
+from django.utils import timezone
 
 SEAT_REGEX = r'^[1-9]\d?[A-F]$'
 
@@ -21,13 +22,11 @@ class FlightSerializer(serializers.ModelSerializer):
             'base_price',
             'status',
         ]
-        
         read_only_fields = ['status']
 
     def validate(self, attrs):
         departure_time = attrs.get('departure_time')
         arrival_time = attrs.get('arrival_time')
-       
 
         if departure_time and departure_time.date() < date.today():
             raise serializers.ValidationError("Departure time cannot be in the past.")
@@ -71,7 +70,7 @@ class TicketListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = [
-           'id',
+            'id',
             'order',
             'flight',
             'seat_number',
@@ -79,12 +78,24 @@ class TicketListSerializer(serializers.ModelSerializer):
             'price',
             'paid',
         ]
+
+
 class TicketDetailSerializer(serializers.ModelSerializer):
+    flight = FlightSerializer(read_only=True)
+
     class Meta:
         model = Ticket
         fields = '__all__'
-        read_only_fields = ['price', 'paid','order']
-        flight = FlightSerializer(read_only=True)
+        read_only_fields = ['price', 'paid', 'order']
+    def validate(self, data):
+       
+        if self.instance and self.instance.order.status == Order.Status.CONFIRMED:
+            raise serializers.ValidationError(
+               "This order has been confirmed. Changes to tickets are not permitted."
+                "Please contact support to rebook."
+            )
+        return data
+
 
 class OrderSerializer(serializers.ModelSerializer):
     tickets = OrderTicketCreateSerializer(many=True, write_only=True)
@@ -103,6 +114,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'status',
             'created_at',
             'updated_at',
+            'reserved_until',
             'tickets',
             'tickets_info',
         ]
@@ -130,41 +142,34 @@ class OrderSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        from django.db import transaction
-
         tickets_data = validated_data.pop('tickets')
         user = self.context['request'].user
+
+        
+        Order.objects.filter(
+            status=Order.Status.PENDING,
+            reserved_until__lt=timezone.now()
+        ).update(status=Order.Status.EXPIRED)
 
         with transaction.atomic():
             order = Order.objects.create(
                 user=user,
                 currency=validated_data.get('currency', 'USD'),
-                status=Order.Status.PENDING,
-                total_amount=Decimal('0.00'),
+                reserved_until=timezone.now() + timedelta(minutes=10)
             )
 
-            total = Decimal('0.00')
+            total_amount = Decimal('0.00')
 
             for ticket_data in tickets_data:
-                flight = ticket_data['flight']
-                ticket_class = ticket_data['ticket_class']
-
-                price = flight.base_price
-                if ticket_class == Ticket.Class.BUSINESS:
-                    price = flight.base_price * Decimal('2.0')
-
-                Ticket.objects.create(
+                ticket = Ticket.objects.create(
                     order=order,
-                    flight=flight,
+                    flight=ticket_data['flight'],
                     seat_number=ticket_data['seat_number'],
-                    ticket_class=ticket_class,
-                    price=price,
-                    paid=False,
+                    ticket_class=ticket_data['ticket_class']
                 )
+                total_amount += ticket.price
 
-                total += price
-
-            order.total_amount = total
+            order.total_amount = total_amount
             order.save(update_fields=['total_amount', 'updated_at'])
 
-        return order
+            return order
