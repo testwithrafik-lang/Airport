@@ -1,0 +1,9 @@
+django
+djangorestframework
+psycopg2-binary
+stripe
+python-dotenv
+django-environ
+drf-spectacular
+Pillow
+djangorestframework-simplejwt
