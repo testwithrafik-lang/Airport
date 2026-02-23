@@ -79,7 +79,7 @@ class Ticket(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
-        self.ticket_class = self.ticket_class.upper()
+        self.ticket_class = self.ticket_class.lower().strip()
         active_booking = Ticket.objects.filter(
             flight=self.flight,
             seat_number=self.seat_number,
@@ -95,10 +95,12 @@ class Ticket(models.Model):
             raise ValueError(f"Seat {self.seat_number} is already reserved.")
 
         ratios = {
-            'ECONOMY': Decimal('1.0'),
-            'STANDARD': Decimal('1.5'),
-            'BUSINESS': Decimal('2.5'),
+        'economy': Decimal('1.0'),
+        'standard': Decimal('1.5'),
+        'business': Decimal('2.5'),
         }
+        if self.ticket_class not in ratios:
+            raise ValueError("Invalid ticket class.")
         self.price = self.flight.base_price * ratios[self.ticket_class]
         super().save(*args, **kwargs)
 
