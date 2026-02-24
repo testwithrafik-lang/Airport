@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:16-alpine
@@ -8,19 +10,13 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=AdminAirport2026
 
-  pgadmin:
-    image: dpage/pgadmin4
-    ports:
-      - '5050:80'
-    environment:
-      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
-      - PGADMIN_DEFAULT_PASSWORD=admin
-    depends_on:
-      - db
-
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      - DB_HOST=db
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
     ports:
@@ -31,10 +27,12 @@ services:
       - db
 
   stripe:
-    image: stripe/stripe-cli
-    command: listen --forward-to web:8000/api/stripe/webhook/
+    image: stripe/stripe-cli:latest
+    command: listen --forward-to web:8000/api/flights/orders/webhook/ --api-key ${STRIPE_SECRET_KEY}
     env_file:
       - .env
+    depends_on:
+      - web
 
 volumes:
   postgres_data:

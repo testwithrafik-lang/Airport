@@ -1,5 +1,6 @@
 import stripe
 from django.conf import settings
+from django.db.models import Count, F, Q
 from rest_framework import viewsets, status
 from rest_framework.decorators import action 
 from rest_framework.response import Response
@@ -8,12 +9,23 @@ from .models import Flight, Ticket, Order
 from .serializers import FlightSerializer, TicketListSerializer, TicketDetailSerializer, OrderSerializer
 from users.permissions import IsAdmin
 
-
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class FlightViewSet(viewsets.ModelViewSet):
     queryset = Flight.objects.all()
     serializer_class = FlightSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset
+        if self.action in ("list", "retrieve"):
+            queryset = queryset.annotate(
+                tickets_available=(
+                    F("airplane__rows") * F("airplane__seats_in_row") - 
+                    Count("tickets", filter=Q(order__status__in=["PAID", "PENDING", "CONFIRMED"]))
+                )
+            )
+        return queryset.order_by("id")
+
     def get_permissions(self):
         if self.action in ['create','update','partial_update','destroy']:
             return [IsAdmin()]
@@ -48,7 +60,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail":"Order cannot be paid."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            
             checkout_session = stripe.checkout.Session.create(
                 payment_method_types=['card'],
                 line_items=[{
@@ -91,6 +102,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ticket.objects.select_related('order','flight')
+    
     def get_queryset(self):
         user = self.request.user
         if user.is_staff or getattr(user,'role',None) == 'ADMIN':

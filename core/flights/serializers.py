@@ -9,14 +9,16 @@ from django.utils import timezone
 SEAT_REGEX = r'^[1-9]\d?[A-F]$'
 
 class FlightSerializer(serializers.ModelSerializer):
+    tickets_available = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Flight
         fields = [
             'id', 'flight_number', 'airplane', 'departure_airport',
             'arrival_airport', 'departure_time', 'arrival_time',
-            'base_price', 'status',
+            'base_price', 'status', 'tickets_available',
         ]
-        read_only_fields = ['status']
+        read_only_fields = ['status', 'tickets_available']
 
     def validate(self, attrs):
         departure_time = attrs.get('departure_time')
@@ -46,12 +48,30 @@ class OrderTicketCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         flight = attrs.get('flight')
         seat_number = attrs.get('seat_number')
+        airplane = flight.airplane
+
         if not re.match(SEAT_REGEX, seat_number or ''):
             raise serializers.ValidationError({"seat_number": "Invalid seat format. Example: 12A"})
+        
+        row = int(seat_number[:-1])
+        letter = seat_number[-1]
+        seat_in_row = ord(letter) - ord('A') + 1
+
+        if row > airplane.rows:
+            raise serializers.ValidationError({"seat_number": f"Row {row} exceeds airplane rows ({airplane.rows})"})
+        if seat_in_row > airplane.seats_in_row:
+            raise serializers.ValidationError({"seat_number": f"Seat {letter} exceeds seats per row ({airplane.seats_in_row})"})
+
         if flight.status not in [Flight.Status.SCHEDULED, Flight.Status.BOARDING]:
             raise serializers.ValidationError({"flight": "Cannot buy ticket: flight is not available."})
-        if Ticket.objects.filter(flight=flight, seat_number=seat_number).exists():
+        
+        if Ticket.objects.filter(
+            flight=flight, 
+            seat_number=seat_number,
+            order__status__in=['PAID', 'PENDING', 'CONFIRMED']
+        ).exists():
             raise serializers.ValidationError({"seat_number": f"Seat {seat_number} is already taken."})
+        
         return attrs
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -79,7 +99,9 @@ class OrderSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         tickets_data = validated_data.pop('tickets')
         user = self.context['request'].user
+        
         Order.objects.filter(status=Order.Status.PENDING, reserved_until__lt=timezone.now()).update(status=Order.Status.EXPIRED)
+
         with transaction.atomic():
             order = Order.objects.create(
                 user=user,
@@ -95,6 +117,7 @@ class OrderSerializer(serializers.ModelSerializer):
                     ticket_class=ticket_data['ticket_class']
                 )
                 total_amount += ticket.price
+            
             order.total_amount = total_amount
             order.save(update_fields=['total_amount', 'updated_at'])
             return order
