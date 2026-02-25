@@ -56,6 +56,22 @@ class Order(models.Model):
         if self.status == self.Status.PENDING:
             self.status = self.Status.EXPIRED 
             self.save()
+    def get_refund_percentage(self):
+       
+        first_ticket = self.tickets.select_related('flight').first()
+        if not first_ticket:
+            return 0
+        
+        now = timezone.now()
+        departure = first_ticket.flight.departure_time
+        time_diff = departure - now
+
+        if time_diff > timedelta(hours=2):
+            return 100 
+        elif timedelta(hours=1) <= time_diff <= timedelta(hours=2):
+            return 50   
+        else:
+            return 0
 
     def cancel(self):
         if self.status in [self.Status.CONFIRMED, self.Status.EXPIRED]:

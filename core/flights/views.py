@@ -71,6 +71,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     'quantity': 1,
                 }],
                 mode='payment',
+                client_reference_id=str(order.id),
                 success_url=settings.FRONTEND_URL + '/success/',
                 cancel_url=settings.FRONTEND_URL + '/cancel/',
             )
@@ -94,11 +95,31 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         order = self.get_object()
-        if order.status in [Order.Status.CANCELED, Order.Status.CONFIRMED]:
-            return Response({"detail":"Cannot cancel this order."}, status=status.HTTP_400_BAD_REQUEST)
+        if order.status in [Order.Status.CANCELED, Order.Status.EXPIRED]:
+            return Response({"detail":"Order is already canceled or expired."}, status=status.HTTP_400_BAD_REQUEST)
+        refund_percent = order.get_refund_percentage()
+
+        if order.status in [Order.Status.PAID, Order.Status.CONFIRMED]:
+            try:
+                payment_record = order.payment 
+                
+                if refund_percent > 0:
+                    refund_amount = int((order.total_amount * (refund_percent / 100)) * 100)
+                    stripe.Refund.create(
+                        payment_intent=payment_record.stripe_charge_id,
+                        amount=refund_amount,
+                    )
+                    message = f"Order canceled. Refund of {refund_percent}% processed."
+                else:
+                    message = "Order canceled. No refund possible (less than 1 hour to departure)."
+            except Exception as e:
+                return Response({"error": f"Refund failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            message = "Order canceled successfully."
+
         order.status = Order.Status.CANCELED
         order.save()
-        return Response({"detail":"Order canceled successfully."})
+        return Response({"detail": message}, status=status.HTTP_200_OK)
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ticket.objects.select_related('order','flight')
