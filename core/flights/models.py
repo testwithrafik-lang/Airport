@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
-
 from locations.models import Airport
 from fleet.models import Airplane
 
