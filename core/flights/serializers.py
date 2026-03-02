@@ -68,7 +68,7 @@ class OrderTicketCreateSerializer(serializers.Serializer):
         if Ticket.objects.filter(
             flight=flight, 
             seat_number=seat_number,
-            order__status__in=['PAID', 'PENDING', 'CONFIRMED']
+            order__status__in=[Order.Status.PAID, Order.Status.PENDING, Order.Status.CONFIRMED]
         ).exists():
             raise serializers.ValidationError({"seat_number": f"Seat {seat_number} is already taken."})
         
@@ -103,6 +103,8 @@ class OrderSerializer(serializers.ModelSerializer):
         Order.objects.filter(status=Order.Status.PENDING, reserved_until__lt=timezone.now()).update(status=Order.Status.EXPIRED)
 
         with transaction.atomic():
+            flight_ids = [t['flight'].id for t in tickets_data]
+            Flight.objects.filter(id__in=flight_ids).select_for_update()
             order = Order.objects.create(
                 user=user,
                 currency=validated_data.get('currency', 'USD'),

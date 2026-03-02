@@ -13,6 +13,9 @@ class Airplane(models.Model):
     model = models.CharField(max_length=50)      
     capacity = models.PositiveIntegerField()     
     registration_number = models.CharField(max_length=20, unique=True)  
+    rows = models.PositiveIntegerField()
+    seats_in_row = models.PositiveIntegerField()
+    registration_number = models.CharField(max_length=20, unique=True)
 
     def __str__(self):
         return f"{self.model} ({self.registration_number})"

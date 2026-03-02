@@ -32,7 +32,7 @@ class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
         PAID = 'PAID', 'Paid'
-        CANCELED = 'CANCELED', 'Canceled'
+        CANCELLED = 'CANCELLED', 'Cancelled' 
         EXPIRED = 'EXPIRED', 'Expired'
         CONFIRMED = 'CONFIRMED', 'Confirmed'
 
@@ -78,6 +78,7 @@ class Order(models.Model):
             raise ValueError("Order cannot be canceled")
         self.status = self.Status.CANCELED
         self.save()
+        
 
     def __str__(self):
         return f"Order {self.id} by {self.user}"
@@ -124,9 +125,4 @@ class Ticket(models.Model):
     class Meta:
         verbose_name = "Ticket"
         verbose_name_plural = "Tickets"
-        constraints = [
-            UniqueConstraint(
-                fields=['flight', 'seat_number'], 
-                name='unique_flight_seat_booking'
-            )
-        ]
+        

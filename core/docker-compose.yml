@@ -5,15 +5,11 @@ services:
     image: postgres:16-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-    environment:
-      - POSTGRES_DB=airport_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=AdminAirport2026
+    env_file:
+      - .env
 
   web:
     build: .
-    environment:
-      - DB_HOST=db
     command: >
       sh -c "python manage.py migrate &&
              python manage.py runserver 0.0.0.0:8000"
@@ -33,6 +29,7 @@ services:
       - .env
     depends_on:
       - web
+    restart: on-failure
 
 volumes:
   postgres_data:

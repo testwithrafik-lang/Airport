@@ -4,6 +4,9 @@ from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from flights.models import Order
 from .models import Payment
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -48,6 +51,38 @@ def create_checkout_session(request, order_id):
         return JsonResponse({"error": "Order not found"}, status=404)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500) 
+    
+class CancelOrderView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            order = Order.objects.get(id=pk, user=request.user)
+            
+            if order.status != "PAID":
+                return Response({"error": "Only paid orders can be cancelled"}, status=400)
+
+            payment = Payment.objects.get(order=order)
+            
+            stripe.Refund.create(
+                payment_intent=payment.session_id
+            )
+
+            order.status = "CANCELLED"
+            order.save()
+            
+            payment.status = "CANCELLED"
+            payment.save()
+
+            return Response({"message": "Order cancelled and refund processed"})
+            
+        except Order.DoesNotExist:
+            return Response({"error": "Order not found"}, status=404)
+        except Payment.DoesNotExist:
+            return Response({"error": "Payment info not found"}, status=404)
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
+    
 
 @csrf_exempt
 def stripe_webhook(request):
@@ -64,10 +99,26 @@ def stripe_webhook(request):
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        order_id = session["metadata"]["order_id"]
+        order_id = session.get("metadata", {}).get("order_id")
+        payment_intent = session.get("payment_intent")
+        if order_id:
+            Order.objects.filter(id=order_id).update(status="PAID")
+            Payment.objects.filter(session_id=session.id).update(status="PAID",session_id=payment_intent)
 
-      
-        Order.objects.filter(id=order_id).update(status="PAID")
-        Payment.objects.filter(session_id=session.id).update(status="PAID")
+    elif event["type"] == "checkout.session.expired":
+        session = event["data"]["object"]
+        order_id = session.get("metadata", {}).get("order_id")
+        if order_id:
+            Order.objects.filter(id=order_id).update(status="EXPIRED")
+            Payment.objects.filter(session_id=session.id).update(status="EXPIRED")
+
+    elif event["type"] == "charge.refunded":
+        charge = event["data"]["object"]
+        payment = Payment.objects.filter(session_id=charge.get("payment_intent")).first()
+        if payment:
+            payment.order.status = "CANCELLED"
+            payment.order.save()
+            payment.status = "CANCELLED"
+            payment.save()
 
     return HttpResponse(status=200)
