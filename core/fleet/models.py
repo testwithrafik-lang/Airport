@@ -9,13 +9,12 @@ class Airline(models.Model):
         return f"{self.name} ({self.code})"
 
 class Airplane(models.Model):
-    airline = models.ForeignKey(Airline, on_delete=models.CASCADE, related_name='airplanes') 
-    model = models.CharField(max_length=50)      
-    capacity = models.PositiveIntegerField()     
-    registration_number = models.CharField(max_length=20, unique=True)  
+    airline = models.ForeignKey(Airline, on_delete=models.CASCADE, related_name='airplanes')
+    model = models.CharField(max_length=50)
+    capacity = models.PositiveIntegerField()
+    registration_number = models.CharField(max_length=20, unique=True)
     rows = models.PositiveIntegerField()
     seats_in_row = models.PositiveIntegerField()
-    registration_number = models.CharField(max_length=20, unique=True)
 
     def __str__(self):
         return f"{self.model} ({self.registration_number})"

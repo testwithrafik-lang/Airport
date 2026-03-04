@@ -58,20 +58,22 @@ class CancelOrderView(APIView):
     def post(self, request, pk):
         try:
             order = Order.objects.get(id=pk, user=request.user)
-            
-            if order.status != "PAID":
+
+            if order.status != Order.Status.PAID:
                 return Response({"error": "Only paid orders can be cancelled"}, status=400)
 
-            payment = Payment.objects.get(order=order)
-            
+            payment = Payment.objects.filter(order=order).order_by('-id').first()
+            if not payment:
+                return Response({"error": "Payment info not found"}, status=404)
+
             stripe.Refund.create(
                 payment_intent=payment.session_id
             )
 
-            order.status = "CANCELLED"
+            order.status = Order.Status.CANCELED
             order.save()
-            
-            payment.status = "CANCELLED"
+
+            payment.status = Payment.StatusChoices.CANCELED
             payment.save()
 
             return Response({"message": "Order cancelled and refund processed"})
@@ -102,23 +104,23 @@ def stripe_webhook(request):
         order_id = session.get("metadata", {}).get("order_id")
         payment_intent = session.get("payment_intent")
         if order_id:
-            Order.objects.filter(id=order_id).update(status="PAID")
-            Payment.objects.filter(session_id=session.id).update(status="PAID",session_id=payment_intent)
+            Order.objects.filter(id=order_id).update(status=Order.Status.PAID)
+            Payment.objects.filter(session_id=session.id).update(status=Payment.StatusChoices.PAID, session_id=payment_intent)
 
     elif event["type"] == "checkout.session.expired":
         session = event["data"]["object"]
         order_id = session.get("metadata", {}).get("order_id")
         if order_id:
-            Order.objects.filter(id=order_id).update(status="EXPIRED")
-            Payment.objects.filter(session_id=session.id).update(status="EXPIRED")
+            Order.objects.filter(id=order_id).update(status=Order.Status.EXPIRED)
+            Payment.objects.filter(session_id=session.id).update(status=Payment.StatusChoices.EXPIRED)
 
     elif event["type"] == "charge.refunded":
         charge = event["data"]["object"]
         payment = Payment.objects.filter(session_id=charge.get("payment_intent")).first()
         if payment:
-            payment.order.status = "CANCELLED"
+            payment.order.status = Order.Status.CANCELED
             payment.order.save()
-            payment.status = "CANCELLED"
+            payment.status = Payment.StatusChoices.CANCELED
             payment.save()
 
     return HttpResponse(status=200)

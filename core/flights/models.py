@@ -13,7 +13,7 @@ class Flight(models.Model):
         BOARDING = 'boarding', 'Boarding'
         DEPARTED = 'departed', 'Departed'
         DELAYED = 'delayed', 'Delayed'
-        CANCELLED = 'cancelled', 'Cancelled'
+        CANCELED = 'canceled', 'Canceled'
         COMPLETED = 'completed', 'Completed'
 
     flight_number = models.CharField(max_length=20, unique=True)
@@ -32,7 +32,7 @@ class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = 'PENDING', 'Pending'
         PAID = 'PAID', 'Paid'
-        CANCELLED = 'CANCELLED', 'Cancelled' 
+        CANCELED = 'CANCELED', 'Canceled'
         EXPIRED = 'EXPIRED', 'Expired'
         CONFIRMED = 'CONFIRMED', 'Confirmed'
 
@@ -98,6 +98,7 @@ class Ticket(models.Model):
 
     def save(self, *args, **kwargs):
         self.ticket_class = self.ticket_class.lower().strip()
+        self.seat_number = self.seat_number.strip().upper()
         active_booking = Ticket.objects.filter(
             flight=self.flight,
             seat_number=self.seat_number,

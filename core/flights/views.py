@@ -100,20 +100,10 @@ class OrderViewSet(viewsets.ModelViewSet):
         refund_percent = order.get_refund_percentage()
 
         if order.status in [Order.Status.PAID, Order.Status.CONFIRMED]:
-            try:
-                payment_record = order.payment 
-                
-                if refund_percent > 0:
-                    refund_amount = int((order.total_amount * (refund_percent / 100)) * 100)
-                    stripe.Refund.create(
-                        payment_intent=payment_record.stripe_charge_id,
-                        amount=refund_amount,
-                    )
-                    message = f"Order canceled. Refund of {refund_percent}% processed."
-                else:
-                    message = "Order canceled. No refund possible (less than 1 hour to departure)."
-            except Exception as e:
-                return Response({"error": f"Refund failed: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            if refund_percent > 0:
+                message = f"Order canceled. Refund available: {refund_percent}% (use payments cancel endpoint to process)."
+            else:
+                message = "Order canceled. No refund possible (less than 1 hour to departure)."
         else:
             message = "Order canceled successfully."
 

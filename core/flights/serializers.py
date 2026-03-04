@@ -1,6 +1,7 @@
 import re
 from decimal import Decimal
 from datetime import date, timedelta
+from typing import Any
 from rest_framework import serializers
 from .models import Flight, Ticket, Order
 from django.db import transaction
@@ -104,7 +105,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
         with transaction.atomic():
             flight_ids = [t['flight'].id for t in tickets_data]
-            Flight.objects.filter(id__in=flight_ids).select_for_update()
+            list[Any](Flight.objects.filter(id__in=flight_ids).select_for_update())
             order = Order.objects.create(
                 user=user,
                 currency=validated_data.get('currency', 'USD'),
