@@ -28,7 +28,7 @@ services:
 
   stripe:
     image: stripe/stripe-cli:latest
-    command: listen --forward-to web:8000/api/flights/orders/webhook/ --api-key ${STRIPE_SECRET_KEY}
+    command: listen --forward-to web:8000/api/payments/webhook/ --api-key ${STRIPE_SECRET_KEY}
     env_file:
       - .env
     depends_on:
