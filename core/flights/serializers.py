@@ -76,7 +76,7 @@ class TicketListSerializer(serializers.ModelSerializer):
             'seat_number',
             'ticket_class',
             'price',
-            'paid',
+            
         ]
 
 

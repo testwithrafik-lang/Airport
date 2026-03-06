@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'users',
     'locations',  
     'fleet',      
-    'flights',    
+    'flights', 
+    'payments',   
 ]
 
 MIDDLEWARE = [
@@ -147,3 +148,5 @@ SPECTACULAR_SETTINGS = {
         }
     },
 }
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
