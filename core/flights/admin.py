@@ -38,7 +38,10 @@ class TicketAdmin(admin.ModelAdmin):
         'seat_number',
         'ticket_class',
         'price',
-        'status',
-        'paid',
+        'get_status',
+        
     )
-    list_filter = ('status', 'paid', 'ticket_class')
+    list_filter = ('flight', 'ticket_class')
+    def get_status(self, obj):
+        return obj.order.status
+    get_status.short_description = 'Order Status'
