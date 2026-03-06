@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=airport_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=AdminAirport2026
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - '5050:80'
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@admin.com
+      - PGADMIN_DEFAULT_PASSWORD=admin
+    depends_on:
+      - db
+
+  web:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - '8000:8000'
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  stripe:
+    image: stripe/stripe-cli
+    command: listen --forward-to web:8000/api/stripe/webhook/
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:

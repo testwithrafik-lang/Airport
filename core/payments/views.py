@@ -13,6 +13,9 @@ def create_checkout_session(request, order_id):
         if order.status.upper() != "PENDING":
             return JsonResponse({"error": "This order is already paid or cancelled"}, status=400)
 
+       
+        frontend_url = settings.FRONTEND_URL
+        
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[{
@@ -27,10 +30,10 @@ def create_checkout_session(request, order_id):
             }],
             mode="payment",
             metadata={"order_id": str(order.id)}, 
-            success_url="http://localhost:8000/api/flights/orders/", 
-            cancel_url="http://localhost:8000/api/flights/orders/", 
+          
+            success_url=f"{frontend_url}/orders/success/",
+            cancel_url=f"{frontend_url}/orders/cancel/"
         )
-
         
         Payment.objects.create(
             order=order,
@@ -66,6 +69,5 @@ def stripe_webhook(request):
       
         Order.objects.filter(id=order_id).update(status="PAID")
         Payment.objects.filter(session_id=session.id).update(status="PAID")
-        print(f"Order {order_id} successfully paid!")
 
     return HttpResponse(status=200)

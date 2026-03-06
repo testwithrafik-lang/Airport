@@ -4,105 +4,75 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Flight, Ticket, Order
 from django.utils import timezone
-from .serializers import (
-    FlightSerializer,
-    TicketListSerializer,
-    TicketDetailSerializer,
-    OrderSerializer,
-)
+from .serializers import FlightSerializer, TicketListSerializer, TicketDetailSerializer, OrderSerializer
 from users.permissions import IsAdmin
-
 
 class FlightViewSet(viewsets.ModelViewSet):
     queryset = Flight.objects.all()
     serializer_class = FlightSerializer
-
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action in ['create','update','partial_update','destroy']:
             return [IsAdmin()]
         return [IsAuthenticatedOrReadOnly()]
-
 
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.prefetch_related('tickets__flight')
     serializer_class = OrderSerializer
-    http_method_names = ['get', 'post', 'patch','head', 'options']
+    http_method_names = ['get','post','patch','head','options']
 
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+        if user.is_staff or getattr(user,'role',None) == 'ADMIN':
             return self.queryset
         return self.queryset.filter(user=user)
     
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
-
     def get_permissions(self):
         return [IsAuthenticated()]
-    
-    
+
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
         order = self.get_object()
-       
         if order.if_expired():
-            order.expire() 
-            return Response(
-                {"detail": "Reservation expired. Please create a new order."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+            order.expire()
+            return Response({"detail":"Reservation expired. Create new order."}, status=status.HTTP_400_BAD_REQUEST)
         if order.status != Order.Status.PENDING:
-            return Response(
-                {"detail": "Order cannot be paid."}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
+            return Response({"detail":"Order cannot be paid."}, status=status.HTTP_400_BAD_REQUEST)
         order.status = Order.Status.PAID
         order.save()
-        order.tickets.update(paid=True)
-        return Response({"detail": "Paid. Waiting for confirmation."}, status=status.HTTP_200_OK)
+        return Response({"detail":"Paid. Waiting for confirmation."}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
-        
         if not request.user.is_staff:
             return Response(status=status.HTTP_403_FORBIDDEN)
-        
         order = self.get_object()
         if order.status != Order.Status.PAID:
-            return Response({"detail": "Only PAID orders can be confirmed."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"detail":"Only PAID orders can be confirmed."}, status=status.HTTP_400_BAD_REQUEST)
         order.status = Order.Status.CONFIRMED
         order.save()
-        return Response({"detail": "Order confirmed."})
+        return Response({"detail":"Order confirmed."})
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         order = self.get_object()
-        if order.status in [Order.Status.CANCELED, Order.Status.CONFIRMED]:
-            return Response({"detail": "Cannot cancel this order."}, status=status.HTTP_400_BAD_REQUEST)
-        
+        if order.status in [Order.Status.CANCELED,Order.Status.CONFIRMED]:
+            return Response({"detail":"Cannot cancel this order."}, status=status.HTTP_400_BAD_REQUEST)
         order.status = Order.Status.CANCELED
         order.save()
-        return Response({"detail": "Order canceled successfully."})
-
+        return Response({"detail":"Order canceled successfully."})
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Ticket.objects.select_related('order', 'flight')
-
+    queryset = Ticket.objects.select_related('order','flight')
     def get_queryset(self):
         user = self.request.user
-        if user.is_staff or getattr(user, 'role', None) == 'ADMIN':
+        if user.is_staff or getattr(user,'role',None) == 'ADMIN':
             return self.queryset
         return self.queryset.filter(order__user=user)
-
     def get_serializer_class(self):
         if self.action == 'list':
             return TicketListSerializer
         return TicketDetailSerializer
-
     def get_permissions(self):
         return [IsAuthenticated()]
-    
-        
