@@ -5,6 +5,7 @@ from locations.models import Airport
 from fleet.models import Airplane
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import UniqueConstraint
 
 class Flight(models.Model):
     class Status(models.TextChoices):
@@ -16,13 +17,13 @@ class Flight(models.Model):
         COMPLETED = 'completed', 'Completed'
 
     flight_number = models.CharField(max_length=20, unique=True)
-    airplane = models.ForeignKey(Airplane,on_delete=models.CASCADE,related_name='flights')
-    departure_airport = models.ForeignKey(Airport,on_delete=models.CASCADE,related_name='departures')
-    arrival_airport = models.ForeignKey(Airport,on_delete=models.CASCADE,related_name='arrivals')
+    airplane = models.ForeignKey(Airplane, on_delete=models.CASCADE, related_name='flights')
+    departure_airport = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name='departures')
+    arrival_airport = models.ForeignKey(Airport, on_delete=models.CASCADE, related_name='arrivals')
     departure_time = models.DateTimeField()
     arrival_time = models.DateTimeField()
     base_price = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20,choices=Status.choices,default=Status.SCHEDULED)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.SCHEDULED)
 
     def __str__(self):
         return f"{self.flight_number}: {self.departure_airport.code} → {self.arrival_airport.code}"
@@ -32,8 +33,8 @@ class Order(models.Model):
         PENDING = 'PENDING', 'Pending'
         PAID = 'PAID', 'Paid'
         CANCELED = 'CANCELED', 'Canceled'
-        EXPIRED = 'EXPIRED','Expired'
-        CONFIRMED = 'CONFIRMED','Confirmed'
+        EXPIRED = 'EXPIRED', 'Expired'
+        CONFIRMED = 'CONFIRMED', 'Confirmed'
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
     currency = models.CharField(max_length=3, default='USD')
@@ -79,7 +80,7 @@ class Ticket(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
-        self.ticket_class = self.ticket_class.upper()
+        self.ticket_class = self.ticket_class.lower().strip()
         active_booking = Ticket.objects.filter(
             flight=self.flight,
             seat_number=self.seat_number,
@@ -95,13 +96,21 @@ class Ticket(models.Model):
             raise ValueError(f"Seat {self.seat_number} is already reserved.")
 
         ratios = {
-            'ECONOMY': Decimal('1.0'),
-            'STANDARD': Decimal('1.5'),
-            'BUSINESS': Decimal('2.5'),
+            'economy': Decimal('1.0'),
+            'standard': Decimal('1.5'),
+            'business': Decimal('2.5'),
         }
+        if self.ticket_class not in ratios:
+            raise ValueError("Invalid ticket class.")
         self.price = self.flight.base_price * ratios[self.ticket_class]
         super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = "Ticket"
         verbose_name_plural = "Tickets"
+        constraints = [
+            UniqueConstraint(
+                fields=['flight', 'seat_number'], 
+                name='unique_flight_seat_booking'
+            )
+        ]
