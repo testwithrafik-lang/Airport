@@ -45,12 +45,12 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
-        if not self.pk:
+        if not self.pk and not self.reserved_until:
             self.reserved_until = timezone.now() + timedelta(minutes=10)
         super().save(*args, **kwargs)
 
     def if_expired(self):
-        return self.status == self.Status.PENDING and timezone.now() > self.reserved_until
+        return self.reserved_until and timezone.now() > self.reserved_until
     
     def expire(self):
         if self.status == self.Status.PENDING:

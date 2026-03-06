@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from .models import Flight, Ticket, Order
 from .serializers import FlightSerializer, TicketListSerializer, TicketDetailSerializer, OrderSerializer
 from users.permissions import IsAdmin
+from django.utils import timezone
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -21,7 +22,7 @@ class FlightViewSet(viewsets.ModelViewSet):
             queryset = queryset.annotate(
                 tickets_available=(
                     F("airplane__rows") * F("airplane__seats_in_row") - 
-                    Count("tickets", filter=Q(order__status__in=["PAID", "PENDING", "CONFIRMED"]))
+                    Count("tickets", filter=Q(tickets__order__status__in=["PAID", "PENDING", "CONFIRMED"]))
                 )
             )
         return queryset.order_by("id")
@@ -51,11 +52,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
         order = self.get_object()
+        order.refresh_from_db()
+       
         
         if order.if_expired():
             order.expire()
             return Response({"detail":"Reservation expired. Create new order."}, status=status.HTTP_400_BAD_REQUEST)
-        
+    
         if order.status != Order.Status.PENDING:
             return Response({"detail":"Order cannot be paid."}, status=status.HTTP_400_BAD_REQUEST)
 

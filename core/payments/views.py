@@ -103,16 +103,18 @@ def stripe_webhook(request):
         session = event["data"]["object"]
         order_id = session.get("metadata", {}).get("order_id")
         payment_intent = session.get("payment_intent")
+        session_id = session.get("id")
         if order_id:
             Order.objects.filter(id=order_id).update(status=Order.Status.PAID)
-            Payment.objects.filter(session_id=session.id).update(status=Payment.StatusChoices.PAID, session_id=payment_intent)
+            Payment.objects.filter(session_id=session_id).update(status=Payment.StatusChoices.PAID, session_id=payment_intent)
 
     elif event["type"] == "checkout.session.expired":
         session = event["data"]["object"]
         order_id = session.get("metadata", {}).get("order_id")
+        session_id = session.get("id")
         if order_id:
             Order.objects.filter(id=order_id).update(status=Order.Status.EXPIRED)
-            Payment.objects.filter(session_id=session.id).update(status=Payment.StatusChoices.EXPIRED)
+            Payment.objects.filter(session_id=session_id).update(status=Payment.StatusChoices.EXPIRED)
 
     elif event["type"] == "charge.refunded":
         charge = event["data"]["object"]

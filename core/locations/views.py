@@ -2,10 +2,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework import viewsets 
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from .models import Country, Airport
 from .serializers import CountrySerializer, AirportSerializer
 
 class CountryAPIView(APIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request, pk=None):
         try:
@@ -27,3 +29,4 @@ class CountryAPIView(APIView):
 class AirportViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Airport.objects.all()
     serializer_class = AirportSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
