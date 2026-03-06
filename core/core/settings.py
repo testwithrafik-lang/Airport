@@ -22,12 +22,6 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-super-secret-key')
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
-
-ALLOWED_HOSTS = []
-
-
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -148,11 +142,14 @@ SPECTACULAR_SETTINGS = {
         }
     },
 }
+SECRET_KEY = os.getenv("SECRET_KEY", "django-super-secret-key")
+DEBUG = os.getenv("DEBUG", "True") == "True"
+
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8000")
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    'nontenable-culinary-jade.ngrok-free.dev', 
+    'nontenable-culinary-jade.ngrok-free.dev',
 ]

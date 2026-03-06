@@ -13,7 +13,7 @@ class Flight(models.Model):
         BOARDING = 'boarding', 'Boarding'
         DEPARTED = 'departed', 'Departed'
         DELAYED = 'delayed', 'Delayed'
-        CANCELLED = 'cancelled', 'Cancelled'
+        CANCELED = 'canceled', 'Canceled'
         COMPLETED = 'completed', 'Completed'
 
     flight_number = models.CharField(max_length=20, unique=True)
@@ -78,6 +78,7 @@ class Order(models.Model):
             raise ValueError("Order cannot be canceled")
         self.status = self.Status.CANCELED
         self.save()
+        
 
     def __str__(self):
         return f"Order {self.id} by {self.user}"
@@ -97,6 +98,7 @@ class Ticket(models.Model):
 
     def save(self, *args, **kwargs):
         self.ticket_class = self.ticket_class.lower().strip()
+        self.seat_number = self.seat_number.strip().upper()
         active_booking = Ticket.objects.filter(
             flight=self.flight,
             seat_number=self.seat_number,
@@ -124,9 +126,4 @@ class Ticket(models.Model):
     class Meta:
         verbose_name = "Ticket"
         verbose_name_plural = "Tickets"
-        constraints = [
-            UniqueConstraint(
-                fields=['flight', 'seat_number'], 
-                name='unique_flight_seat_booking'
-            )
-        ]
+        
