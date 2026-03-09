@@ -35,6 +35,7 @@ class Order(models.Model):
         CANCELED = 'CANCELED', 'Canceled'
         EXPIRED = 'EXPIRED', 'Expired'
         CONFIRMED = 'CONFIRMED', 'Confirmed'
+        REFUNDED = "REFUNDED" ,'Refunded'
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
     currency = models.CharField(max_length=3, default='USD')
