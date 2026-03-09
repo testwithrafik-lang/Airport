@@ -1,8 +1,8 @@
 from django.urls import path
-from .views import create_checkout_session, stripe_webhook, CancelOrderView
+from .views import create_checkout_session, stripe_webhook, RefundOrderView
 
 urlpatterns = [
-    path("pay/<int:order_id>/", create_checkout_session, name="create-checkout-session"),
-    path("webhook/", stripe_webhook, name="stripe-webhook"),
-    path('orders/<int:pk>/cancel/', CancelOrderView.as_view(), name='order-cancel'),
+    path('create-checkout-session/<int:order_id>/', create_checkout_session, name='create_checkout_session'),
+    path('webhook/', stripe_webhook, name='stripe_webhook'),
+    path('orders/<int:pk>/cancel/', RefundOrderView.as_view(), name='cancel_order'),
 ]
