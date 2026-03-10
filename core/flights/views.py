@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 
 from .models import Flight, Ticket, Order
-from .serializers import FlightSerializer, OrderSerializer  
+from .serializers import FlightSerializer, OrderSerializer, TicketListSerializer, TicketDetailSerializer
 from users.permissions import IsAdmin
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -45,7 +45,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(user=user)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        order = serializer.save(user=self.request.user) 
         self.send_order_email(order, "order_created")
 
     def get_permissions(self):
