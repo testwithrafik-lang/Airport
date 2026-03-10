@@ -153,3 +153,5 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'nontenable-culinary-jade.ngrok-free.dev',
 ]
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'Airport Service <noreply@airport.com>'
