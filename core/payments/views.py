@@ -91,28 +91,30 @@ def stripe_webhook(request):
     except Exception:
         return HttpResponse(status=400)
 
-   
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         order_id = session["metadata"]["order_id"]
-        session_id = session["id"]
+        
+        try:
+            order = Order.objects.get(id=order_id)
+            order.status = "PAID"
+            order.save()
+            
+            Payment.objects.filter(session_id=session["id"]).update(status="PAID")
+        except Order.DoesNotExist:
+            return HttpResponse(status=404)
 
-        Order.objects.filter(id=order_id).update(status=Order.Status.PAID)
-        Payment.objects.filter(session_id=session_id).update(status="PAID")
-
-    
     if event["type"] == "charge.refunded":
         charge = event["data"]["object"]
         payment_intent = charge["payment_intent"]
-
-       
         sessions = stripe.checkout.Session.list(payment_intent=payment_intent).data
         if sessions:
             session_id = sessions[0].id
             payment = Payment.objects.filter(session_id=session_id).first()
             if payment:
-              
-                Order.objects.filter(id=payment.order.id).update(status=Order.Status.REFUNDED)
+                order = payment.order
+                order.status = "REFUNDED"
+                order.save()
                 Payment.objects.filter(id=payment.id).update(status="REFUNDED")
 
     return HttpResponse(status=200)

@@ -14,7 +14,7 @@ from users.permissions import IsAdmin
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class FlightViewSet(viewsets.ModelViewSet):
-    queryset = Flight.objects.all()
+    queryset = Flight.objects.select_related("airplane", "route").all()    
     serializer_class = FlightSerializer
 
     def get_queryset(self):
@@ -34,12 +34,13 @@ class FlightViewSet(viewsets.ModelViewSet):
         return [IsAuthenticatedOrReadOnly()]
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.prefetch_related('tickets__flight')
+    queryset = Order.objects.prefetch_related('tickets__flight').all()
     serializer_class = OrderSerializer
     http_method_names = ['get','post','patch','head','options']
 
     def get_queryset(self):
         user = self.request.user
+        queryset = self.queryset
         if user.is_staff or getattr(user,'role',None) == 'ADMIN':
             return self.queryset
         return self.queryset.filter(user=user)
@@ -143,6 +144,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail":"Only PAID orders can be confirmed."}, status=status.HTTP_400_BAD_REQUEST)
         order.status = Order.Status.CONFIRMED
         order.save()
+        self.send_order_email(order, "order_confirmed")
         return Response({"detail":"Order confirmed."})
 
     @action(detail=True, methods=['post'])
@@ -162,10 +164,11 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = Order.Status.CANCELED
         order.save()
+        self.send_order_email(order, "order_cancelled")
         return Response({"detail": message}, status=status.HTTP_200_OK)
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Ticket.objects.select_related('order','flight')
+    queryset = Ticket.objects.select_related('order', 'flight').all()
     
     def get_queryset(self):
         user = self.request.user
