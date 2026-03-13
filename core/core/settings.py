@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'rest_framework_simplejwt',
+    'debug_toolbar',
 
     'users',
     'locations',  
@@ -49,6 +50,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'debug_toolbar.middleware.DebugToolbarMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -153,3 +155,11 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     'nontenable-culinary-jade.ngrok-free.dev',
 ]
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'n.p.konchakivskii@gmail.com'  
+EMAIL_HOST_PASSWORD = 'uasl jusp jeos ftqi'
+DEFAULT_FROM_EMAIL = 'Airport Service <noreply@airport.com>'
+INTERNAL_IPS = ["127.0.0.1",]

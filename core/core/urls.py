@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
@@ -20,4 +21,6 @@ urlpatterns = [
     path('api/flights/', include('flights.urls')),     
     path('api/users/', include('users.urls')),        
     path('api/payments/', include('payments.urls')), 
+    path('__debug__/', include('debug_toolbar.urls')),
+    path('success/', lambda request: HttpResponse("Thank you! Payment was successful. Check your email."), name='payment-success'),
 ]

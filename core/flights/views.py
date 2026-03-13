@@ -1,19 +1,20 @@
 import stripe
 from django.conf import settings
 from django.db.models import Count, F, Q
+from django.core.mail import send_mail  
 from rest_framework import viewsets, status
 from rest_framework.decorators import action 
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+
 from .models import Flight, Ticket, Order
-from .serializers import FlightSerializer, TicketListSerializer, TicketDetailSerializer, OrderSerializer
+from .serializers import FlightSerializer, OrderSerializer, TicketListSerializer, TicketDetailSerializer
 from users.permissions import IsAdmin
-from django.utils import timezone
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class FlightViewSet(viewsets.ModelViewSet):
-    queryset = Flight.objects.all()
+    queryset = Flight.objects.select_related("airplane", "route").all()    
     serializer_class = FlightSerializer
 
     def get_queryset(self):
@@ -33,21 +34,71 @@ class FlightViewSet(viewsets.ModelViewSet):
         return [IsAuthenticatedOrReadOnly()]
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.prefetch_related('tickets__flight')
+    queryset = Order.objects.prefetch_related('tickets__flight').all()
     serializer_class = OrderSerializer
     http_method_names = ['get','post','patch','head','options']
 
     def get_queryset(self):
         user = self.request.user
+        queryset = self.queryset
         if user.is_staff or getattr(user,'role',None) == 'ADMIN':
             return self.queryset
         return self.queryset.filter(user=user)
     
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        order = serializer.save(user=self.request.user) 
+        self.send_order_email(order, "order_created")
 
     def get_permissions(self):
         return [IsAuthenticated()]
+
+    def send_order_email(self, order, email_type):
+
+        user_email = order.user.email
+        subject = ""
+        message = ""
+
+        if email_type == "order_created":
+            subject = f"Order #{order.id} Created - Airport Service"
+            message = (
+                f"Your order #{order.id} has been created and is pending payment.\n"
+                f"Total amount: {order.total_amount} {order.currency}\n"
+                f"Please complete the payment within the reservation time limit."
+            )
+        
+        elif email_type == "payment_success":
+            subject = f"Payment Received: Order #{order.id}"
+            message = (
+                f"Payment for order #{order.id} was successful!\n"
+                f"Status: PAID. Our staff will confirm your booking shortly."
+            )
+
+        elif email_type == "order_confirmed":
+            subject = f"Booking Confirmed: Order #{order.id}"
+            tickets_info = "\n".join([
+                f"- Flight {t.flight.flight_number}: Row {t.row}, Seat {t.seat}" 
+                for t in order.tickets.all()
+            ])
+            message = (
+                f"Great news! Your booking for order #{order.id} is officially confirmed.\n"
+                f"Your tickets:\n{tickets_info}\n\n"
+                f"Thank you for choosing Airport Service!"
+            )
+
+        elif email_type == "order_cancelled":
+            subject = f"Order #{order.id} Cancelled"
+            message = (
+                f"Order #{order.id} has been cancelled.\n"
+                f"If a refund is applicable, it will be processed according to our policy."
+            )
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user_email],
+            fail_silently=False,
+        )
 
     @action(detail=True, methods=['post'])
     def pay(self, request, pk=None):
@@ -93,6 +144,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response({"detail":"Only PAID orders can be confirmed."}, status=status.HTTP_400_BAD_REQUEST)
         order.status = Order.Status.CONFIRMED
         order.save()
+        self.send_order_email(order, "order_confirmed")
         return Response({"detail":"Order confirmed."})
 
     @action(detail=True, methods=['post'])
@@ -112,10 +164,11 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = Order.Status.CANCELED
         order.save()
+        self.send_order_email(order, "order_cancelled")
         return Response({"detail": message}, status=status.HTTP_200_OK)
 
 class TicketViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Ticket.objects.select_related('order','flight')
+    queryset = Ticket.objects.select_related('order', 'flight').all()
     
     def get_queryset(self):
         user = self.request.user
