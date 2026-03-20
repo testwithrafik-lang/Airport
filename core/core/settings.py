@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'fleet',      
     'flights', 
     'payments',   
+    'assistant',
 ]
 
 MIDDLEWARE = [
@@ -149,8 +150,13 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8000")
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'nontenable-culinary-jade.ngrok-free.dev',]
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587

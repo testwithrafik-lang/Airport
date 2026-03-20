@@ -144,7 +144,10 @@ def stripe_webhook(request):
 
     if event_type == "checkout.session.completed":
         session = event["data"]["object"]
-        order_id = session.get("metadata", {}).get("order_id")
+        order_id = (
+            session.get("metadata", {}).get("order_id")
+            or session.get("client_reference_id")
+        )
 
         if not order_id:
             return HttpResponse(status=200)
