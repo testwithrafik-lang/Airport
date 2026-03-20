@@ -40,7 +40,6 @@ class TicketDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['id', 'flight', 'seat_number', 'ticket_class', 'price']
-
 class OrderTicketCreateSerializer(serializers.Serializer):
     flight = serializers.PrimaryKeyRelatedField(queryset=Flight.objects.all())
     seat_number = serializers.CharField(max_length=10)
@@ -51,21 +50,29 @@ class OrderTicketCreateSerializer(serializers.Serializer):
         seat_number = attrs.get('seat_number')
         airplane = flight.airplane
 
+       
         if not re.match(SEAT_REGEX, seat_number or ''):
             raise serializers.ValidationError({"seat_number": "Invalid seat format. Example: 12A"})
         
-        row = int(seat_number[:-1])
-        letter = seat_number[-1]
-        seat_in_row = ord(letter) - ord('A') + 1
+        
+        try:
+            row = int(seat_number[:-1])
+            letter = seat_number[-1]
+            seat_in_row = ord(letter) - ord('A') + 1
+        except (ValueError, IndexError):
+            raise serializers.ValidationError({"seat_number": "Invalid seat format."})
 
+       
         if row > airplane.rows:
             raise serializers.ValidationError({"seat_number": f"Row {row} exceeds airplane rows ({airplane.rows})"})
         if seat_in_row > airplane.seats_in_row:
             raise serializers.ValidationError({"seat_number": f"Seat {letter} exceeds seats per row ({airplane.seats_in_row})"})
 
+        
         if flight.status not in [Flight.Status.SCHEDULED, Flight.Status.BOARDING]:
             raise serializers.ValidationError({"flight": "Cannot buy ticket: flight is not available."})
         
+    
         if Ticket.objects.filter(
             flight=flight, 
             seat_number=seat_number,
@@ -74,7 +81,6 @@ class OrderTicketCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError({"seat_number": f"Seat {seat_number} is already taken."})
         
         return attrs
-
 class OrderSerializer(serializers.ModelSerializer):
     tickets = OrderTicketCreateSerializer(many=True, write_only=True)
     tickets_info = TicketListSerializer(many=True, read_only=True, source='tickets')

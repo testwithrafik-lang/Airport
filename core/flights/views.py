@@ -14,7 +14,7 @@ from users.permissions import IsAdmin
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 class FlightViewSet(viewsets.ModelViewSet):
-    queryset = Flight.objects.select_related("airplane", "route").all()    
+    queryset = Flight.objects.select_related("airplane", "departure_airport", "arrival_airport").all()    
     serializer_class = FlightSerializer
 
     def get_queryset(self):
@@ -104,36 +104,47 @@ class OrderViewSet(viewsets.ModelViewSet):
     def pay(self, request, pk=None):
         order = self.get_object()
         order.refresh_from_db()
-       
-        
+
         if order.if_expired():
             order.expire()
             return Response({"detail":"Reservation expired. Create new order."}, status=status.HTTP_400_BAD_REQUEST)
     
         if order.status != Order.Status.PENDING:
-            return Response({"detail":"Order cannot be paid."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Order cannot be paid."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             checkout_session = stripe.checkout.Session.create(
-                payment_method_types=['card'],
-                line_items=[{
-                    'price_data': {
-                        'currency': order.currency,
-                        'product_data': {'name': f'Order #{order.id}'},
-                        'unit_amount': int(order.total_amount * 100), 
-                    },
-                    'quantity': 1,
-                }],
-                mode='payment',
-                client_reference_id=str(order.id),
-                success_url=settings.FRONTEND_URL + '/success/',
-                cancel_url=settings.FRONTEND_URL + '/cancel/',
+                payment_method_types=["card"],
+                line_items=[
+                    {
+                        "price_data": {
+                            "currency": order.currency,
+                            "product_data": {"name": f"Order #{order.id}"},
+                            "unit_amount": int(order.total_amount * 100),
+                        },
+                        "quantity": 1,
+                    }
+                ],
+                mode="payment",
+                metadata={"order_id": str(order.id)},
+                success_url=f"{settings.FRONTEND_URL}/success",
+                cancel_url=f"{settings.FRONTEND_URL}/cancel",
             )
-        
-            return Response({'checkout_url': checkout_session.url}, status=status.HTTP_200_OK)
-        
+
+            from payments.models import Payment
+
+            Payment.objects.create(
+                order=order,
+                session_id=checkout_session.id,
+                session_url=checkout_session.url,
+                money_to_pay=order.total_amount,
+                status=Payment.StatusChoices.PENDING,
+            )
+
+            return Response({"checkout_url": checkout_session.url}, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):

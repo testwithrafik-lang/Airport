@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'fleet',      
     'flights', 
     'payments',   
+    'assistant',
 ]
 
 MIDDLEWARE = [
@@ -149,17 +150,18 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8000")
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
-    'nontenable-culinary-jade.ngrok-free.dev',
-]
+    'nontenable-culinary-jade.ngrok-free.dev',]
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'n.p.konchakivskii@gmail.com'  
-EMAIL_HOST_PASSWORD = 'uasl jusp jeos ftqi'
-DEFAULT_FROM_EMAIL = 'Airport Service <noreply@airport.com>'
-INTERNAL_IPS = ["127.0.0.1",]
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Airport Service <noreply@airport.com>")
+INTERNAL_IPS = [ip.strip() for ip in os.getenv("INTERNAL_IPS", "127.0.0.1").split(",") if ip.strip()]

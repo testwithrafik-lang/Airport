@@ -21,6 +21,7 @@ urlpatterns = [
     path('api/flights/', include('flights.urls')),     
     path('api/users/', include('users.urls')),        
     path('api/payments/', include('payments.urls')), 
+    path('api/assistant/', include('assistant.urls')),
     path('__debug__/', include('debug_toolbar.urls')),
     path('success/', lambda request: HttpResponse("Thank you! Payment was successful. Check your email."), name='payment-success'),
 ]

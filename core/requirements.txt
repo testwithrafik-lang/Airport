@@ -7,3 +7,5 @@ django-environ
 drf-spectacular
 Pillow
 djangorestframework-simplejwt
+django-debug-toolbar
+google-generativeai
