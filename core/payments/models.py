@@ -6,6 +6,7 @@ class Payment(models.Model):
         PAID = "PAID", "Paid"
         CANCELED = "CANCELED", "Canceled"
         EXPIRED = "EXPIRED", "Expired"
+        REFUNDED = "REFUNDED", "Refunded"
 
     status = models.CharField(max_length=10, choices=StatusChoices.choices, default=StatusChoices.PENDING)
     order = models.ForeignKey("flights.Order", on_delete=models.CASCADE, related_name="payments")

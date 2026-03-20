@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from assistant.views import AirportAiPageView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -21,6 +22,8 @@ urlpatterns = [
     path('api/flights/', include('flights.urls')),     
     path('api/users/', include('users.urls')),        
     path('api/payments/', include('payments.urls')), 
+    path('api/assistant/', include('assistant.urls')),
+    path('ai/', AirportAiPageView.as_view()),
     path('__debug__/', include('debug_toolbar.urls')),
     path('success/', lambda request: HttpResponse("Thank you! Payment was successful. Check your email."), name='payment-success'),
 ]
